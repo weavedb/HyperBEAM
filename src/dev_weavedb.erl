@@ -1,5 +1,5 @@
 -module(dev_weavedb).
--export([ compute/3, init/3, snapshot/3, normalize/3 ]).
+-export([ compute/3, init/3, snapshot/3, normalize/3 , query/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -include("include/hb.hrl").
 
@@ -56,3 +56,14 @@ snapshot(Msg, _Msg2, _Opts) -> {ok, Msg}.
 
 normalize(Msg, _Msg2, _Opts) -> {ok, Msg}.
 
+query(_M1, M2, _Opts) ->
+    A = maps:get(<<"a">>, M2),
+    B = maps:get(<<"b">>, M2),
+    {ok, Sum} = dev_weavedb_nif:query(A, B),
+    {ok, #{ <<"sum">> => Sum }}.
+
+%%% Tests
+resolve_add_test() ->
+    M1 = #{ <<"device">> => <<"weavedb@1.0">> },
+    M2 = #{ <<"path">> => <<"query">>, <<"a">> => 8, <<"b">> => 9 },
+    {ok, #{ <<"sum">> := 17 }} = hb_ao:resolve(M1, M2, #{}).
