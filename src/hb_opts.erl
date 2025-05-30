@@ -89,7 +89,8 @@ default_message() ->
             #{<<"name">> => <<"test-device@1.0">>, <<"module">> => dev_test},
             #{<<"name">> => <<"volume@1.0">>, <<"module">> => dev_volume},
             #{<<"name">> => <<"wasi@1.0">>, <<"module">> => dev_wasi},
-            #{<<"name">> => <<"wasm-64@1.0">>, <<"module">> => dev_wasm}
+            #{<<"name">> => <<"wasm-64@1.0">>, <<"module">> => dev_wasm},
+            #{<<"name">> => <<"wao@1.0">>, <<"module">> => dev_wao}
         ],
         %% Default execution cache control options
         cache_control => [<<"no-cache">>, <<"no-store">>],
