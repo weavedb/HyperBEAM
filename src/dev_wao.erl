@@ -1,5 +1,5 @@
 -module(dev_wao).
--export([ info/3, relay/3, compute/3, init/3, snapshot/3, normalize/3, cache_wasm_image/3 ]).
+-export([ info/3, relay/3, compute/3, init/3, snapshot/3, normalize/3, cache_module/3, httpsig_to_json/3, balance/3, topup/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -include("include/hb.hrl").
 
@@ -7,7 +7,6 @@ info(Msg, _, Opts) ->
     {ok, hb_ao:set(Msg, #{ <<"version">> => <<"1.0">> }, Opts)}.
 
 relay(_Msg1, Msg2, Opts) ->
-						% Extract the forwarding parameters
     Target = hb_ao:get(<<"forward-to">>, Msg2, undefined, Opts),
     Method = hb_ao:get(<<"forward-method">>, Msg2, <<"POST">>, Opts),
     Body = hb_ao:get(<<"forward-body">>, Msg2, <<>>, Opts),
@@ -16,7 +15,6 @@ relay(_Msg1, Msg2, Opts) ->
         undefined ->
             {error, <<"Missing forward-to header">>};
         _ ->
-						% Construct the relay message
             RelayMsg = #{
 			 <<"path">> => <<"/~relay@1.0/call">>,
 			 <<"method">> => <<"POST">>,
@@ -25,7 +23,6 @@ relay(_Msg1, Msg2, Opts) ->
 			 <<"relay-body">> => Body
 			},
 
-						% Forward to the relay device
             case hb_ao:resolve(RelayMsg, Opts) of
                 {ok, Response} ->
                     {ok, Response};
@@ -48,17 +45,75 @@ snapshot(Msg, _Msg2, _Opts) -> {ok, Msg}.
 
 normalize(Msg, _Msg2, _Opts) -> {ok, Msg}.
 
-cache_wasm_image(Msg1, _Msg2, Opts) ->
-    Filename = hb_ao:get(<<"filename">>, Msg1, <<>>, Opts),
-    case dev_wasm:cache_wasm_image(Filename, Opts) of
-        #{ <<"image">> := ImageID } ->
-            {ok, #{ <<"image">> => ImageID }};
-        Error ->
-            {ok, #{
-		   <<"content-type">> => <<"application/json">>,
-		   <<"body">> => dev_codec_json:to(#{
-						     <<"error">> => <<"Failed to cache WASM image">>,
-						     <<"details">> => iolist_to_binary(io_lib:format("~p", [Error]))
-						    })
-		  }}
+cache_module(Msg1, _Msg2, Opts) ->
+    Binary = hb_ao:get(<<"data">>, Msg1, <<>>, Opts),
+    Type = hb_ao:get(<<"type">>, Msg1, <<>>, Opts),
+    ModuleMsg = #{ <<"content-type">> => Type, <<"body">> => Binary },
+    case hb_cache:write(ModuleMsg, Opts) of
+	{ok, BinaryID} ->
+	    {ok, #{
+		   <<"id">> => BinaryID,
+		   <<"size">> => byte_size(Binary)
+		  }};
+	Error ->
+	    {error, #{
+		      <<"status">> => 500,
+		      <<"body">> => <<"Failed to cache file">>
+		     }}
     end.
+
+
+is_operator(Req, NodeMsg) ->
+    Signers = hb_message:signers(Req),
+    OperatorAddr = hb_util:human_id(hb_opts:get(operator, undefined, NodeMsg)),
+    lists:any(
+      fun(Signer) ->
+	      OperatorAddr =:= hb_util:human_id(Signer)
+      end,
+      Signers
+     ).
+
+topup(Msg, Msg2, Opts) -> 
+    case is_operator(Msg2,Opts) of
+	true ->
+	    Wallet = hb_opts:get(priv_wallet, not_found, Opts),
+	    Recipient = hb_ao:get(<<"recipient">>, Msg, <<>>, Opts),
+	    Port = hb_opts:get(port, not_found, Opts),
+	    Node = <<"http://localhost:", (integer_to_binary(Port))/binary, "/">>,
+	    {ok, TopupRes} =
+		hb_http:post(
+		  Node,
+		  hb_message:commit(
+		    #{
+		      <<"path">> => <<"/ledger~node-process@1.0/schedule">>,
+		      <<"body">> =>
+			  hb_message:commit(
+                            #{
+			      <<"path">> => <<"credit-notice">>,
+			      <<"quantity">> => 100,
+			      <<"recipient">> =>  Recipient
+			     },
+			    Wallet
+			   )
+		     },
+		    Wallet
+		   ),
+		  #{}
+		 ),
+	    {ok, dev_codec_json:to(TopupRes)};	
+	_ -> {error, dev_codec_json:to(#{ <<"error">> => <<"not operator">> })}
+    end.
+
+balance(Msg, Msg2, Opts) -> 
+    Target = hb_ao:get(<<"target">>, Msg, <<>>, Opts),
+    Port = hb_opts:get(port, not_found, Opts),
+    Node = <<"http://localhost:", (integer_to_binary(Port))/binary, "/">>,
+    {ok, Bal} =
+        hb_http:get(
+	  Node,
+	  <<"/ledger~node-process@1.0/now/balance/", Target/binary>>,
+	  #{}
+	 ),
+    {ok, dev_codec_json:to(#{ <<"balance">> => Bal})}.
+
+httpsig_to_json(Msg, Msg2, Opts) -> {ok, dev_codec_json:to(Msg2)}.
