@@ -34,11 +34,12 @@ relay(_Msg1, Msg2, Opts) ->
 compute(Msg1, Msg2, Opts) ->
     case hb_ao:get([<<"body">>,<<"Action">>], Msg2, Opts) of
 	Other ->
-	    {ok, hb_ao:set( Msg1, #{  }, Opts )}
+	    Count = hb_ao:get(<<"count">>, Msg1, 0, Opts),
+	    {ok, hb_ao:set( Msg1, #{ <<"count">> => Count + 1 }, Opts )}
     end.
 
 init(Msg, Msg2, Opts) -> 
-    {ok, hb_ao:set(Msg, #{ }, Opts)}.
+    {ok, hb_ao:set(Msg, #{ <<"count">> => 0 }, Opts)}.
 
 
 snapshot(Msg, _Msg2, _Opts) -> {ok, Msg}.
