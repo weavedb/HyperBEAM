@@ -91,6 +91,7 @@ default_message() ->
             #{<<"name">> => <<"wasi@1.0">>, <<"module">> => dev_wasi},
             #{<<"name">> => <<"wasm-64@1.0">>, <<"module">> => dev_wasm},
             #{<<"name">> => <<"wao@1.0">>, <<"module">> => dev_wao},
+            #{<<"name">> => <<"double@1.0">>, <<"module">> => dev_double},
             #{<<"name">> => <<"add@1.0">>, <<"module">> => dev_add},
             #{<<"name">> => <<"mul@1.0">>, <<"module">> => dev_mul}
         ],

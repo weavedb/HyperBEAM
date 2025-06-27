@@ -1,7 +1,20 @@
 -module(dev_wao).
--export([ info/3, relay/3, compute/3, init/3, snapshot/3, normalize/3, cache_module/3, httpsig_to_json/3, balance/3, topup/3 ]).
+-export([ info/3, compute/3, init/3, snapshot/3, normalize/3 ]).
+-export([ relay/3, cache_module/3, httpsig_to_json/3, balance/3, topup/3, cron/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -include("include/hb.hrl").
+
+cron(Msg1, Msg2, Opts) ->
+    Target = hb_ao:get(<<"target">>, Msg1, not_found, Opts),
+    Wallet = hb_opts:get(priv_wallet, not_found, Opts),
+    Msg = #{
+        <<"device">> => <<"process@1.0">>,
+        <<"path">> => <<"schedule">>,
+        <<"target">> => Target,
+        <<"method">> => <<"POST">>,
+        <<"body">> => hb_message:commit( #{ }, Wallet )
+	 },
+    hb_ao:resolve( Msg, Opts ).
 
 info(Msg, _, Opts) ->
     {ok, hb_ao:set(Msg, #{ <<"version">> => <<"1.0">> }, Opts)}.
@@ -34,13 +47,12 @@ relay(_Msg1, Msg2, Opts) ->
 compute(Msg1, Msg2, Opts) ->
     case hb_ao:get([<<"body">>,<<"Action">>], Msg2, Opts) of
 	Other ->
-	    Count = hb_ao:get(<<"count">>, Msg1, 0, Opts),
-	    {ok, hb_ao:set( Msg1, #{ <<"count">> => Count + 1 }, Opts )}
+	    Count = hb_ao:get(<<"count">>, Msg1, 0, Opts) + 1,
+	    {ok, hb_ao:set( Msg1, #{ <<"results">> => #{ <<"1">> => #{ <<"method">> => <<"PATCH">>, <<"square">> => Count * Count, <<"double">> => Count * 2 } }, <<"count">> => Count }, Opts )}
     end.
 
 init(Msg, Msg2, Opts) -> 
     {ok, hb_ao:set(Msg, #{ <<"count">> => 0 }, Opts)}.
-
 
 snapshot(Msg, _Msg2, _Opts) -> {ok, Msg}.
 
