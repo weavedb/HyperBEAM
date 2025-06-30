@@ -1,6 +1,6 @@
 -module(dev_wao).
 -export([ info/3, compute/3, init/3, snapshot/3, normalize/3 ]).
--export([ relay/3, cache_module/3, httpsig_to_json/3, balance/3, topup/3, cron/3 ]).
+-export([ cache_module/3, httpsig/3, balance/3, topup/3, cron/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -include("include/hb.hrl").
 
@@ -18,31 +18,6 @@ cron(Msg1, Msg2, Opts) ->
 
 info(Msg, _, Opts) ->
     {ok, hb_ao:set(Msg, #{ <<"version">> => <<"1.0">> }, Opts)}.
-
-relay(_Msg1, Msg2, Opts) ->
-    Target = hb_ao:get(<<"forward-to">>, Msg2, undefined, Opts),
-    Method = hb_ao:get(<<"forward-method">>, Msg2, <<"POST">>, Opts),
-    Body = hb_ao:get(<<"forward-body">>, Msg2, <<>>, Opts),
-
-    case Target of
-        undefined ->
-            {error, <<"Missing forward-to header">>};
-        _ ->
-            RelayMsg = #{
-			 <<"path">> => <<"/~relay@1.0/call">>,
-			 <<"method">> => <<"POST">>,
-			 <<"relay-path">> => Target,
-			 <<"relay-method">> => Method,
-			 <<"relay-body">> => Body
-			},
-
-            case hb_ao:resolve(RelayMsg, Opts) of
-                {ok, Response} ->
-                    {ok, Response};
-                {error, Reason} ->
-                    {error, Reason}
-            end
-    end.
 
 compute(Msg1, Msg2, Opts) ->
     case hb_ao:get([<<"body">>,<<"Action">>], Msg2, Opts) of
@@ -129,4 +104,7 @@ balance(Msg, Msg2, Opts) ->
 	 ),
     {ok, dev_codec_json:to(#{ <<"balance">> => Bal})}.
 
-httpsig_to_json(Msg, Msg2, Opts) -> {ok, dev_codec_json:to(Msg2)}.
+
+httpsig(Msg, Msg2, Opts) -> 
+    Msg3 = maps:without([<<"commitments">>, <<"method">>, <<"path">>, <<"inline-body-key">>, <<"content-length">>, <<"content-type">>], Msg2),
+    {ok, dev_codec_json:to(Msg3)}.
