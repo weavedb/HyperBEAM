@@ -93,7 +93,11 @@ default_message() ->
             #{<<"name">> => <<"wao@1.0">>, <<"module">> => dev_wao},
             #{<<"name">> => <<"double@1.0">>, <<"module">> => dev_double},
             #{<<"name">> => <<"add@1.0">>, <<"module">> => dev_add},
-            #{<<"name">> => <<"mul@1.0">>, <<"module">> => dev_mul}
+            #{<<"name">> => <<"mul@1.0">>, <<"module">> => dev_mul},
+            #{<<"name">> => <<"inc@1.0">>, <<"module">> => dev_inc},
+            #{<<"name">> => <<"inc2@1.0">>, <<"module">> => dev_inc2},
+            #{<<"name">> => <<"square@1.0">>, <<"module">> => dev_square},
+            #{<<"name">> => <<"mydev@1.0">>, <<"module">> => dev_mydev}
         ],
         %% Default execution cache control options
         cache_control => [<<"no-cache">>, <<"no-store">>],

@@ -1,11 +1,11 @@
--module(dev_double).
+-module(dev_square).
 -export([ compute/3, init/3, snapshot/3, normalize/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -include("include/hb.hrl").
-
+ 
 compute(Msg1, Msg2, Opts) ->
   Num = maps:get(<<"num">>, Msg1),
-  {ok, hb_ao:set( Msg1, #{ <<"num">> => Num * 2 }, Opts )}.
+  {ok, hb_ao:set( Msg1, #{ <<"num">> => Num * Num }, Opts )}.
 
 init(Msg, Msg2, Opts) -> 
   {ok, hb_ao:set(Msg, #{ <<"num">> => 0 }, Opts)}.
