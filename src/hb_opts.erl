@@ -97,7 +97,8 @@ default_message() ->
             #{<<"name">> => <<"inc@1.0">>, <<"module">> => dev_inc},
             #{<<"name">> => <<"inc2@1.0">>, <<"module">> => dev_inc2},
             #{<<"name">> => <<"square@1.0">>, <<"module">> => dev_square},
-            #{<<"name">> => <<"mydev@1.0">>, <<"module">> => dev_mydev}
+            #{<<"name">> => <<"mydev@1.0">>, <<"module">> => dev_mydev},
+            #{<<"name">> => <<"hbsig@1.0">>, <<"module">> => dev_hbsig}
         ],
         %% Default execution cache control options
         cache_control => [<<"no-cache">>, <<"no-store">>],
