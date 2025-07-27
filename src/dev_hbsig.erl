@@ -1,5 +1,5 @@
 -module(dev_hbsig).
--export([ json_to_erl/3, to_erl/1, to_str/1, structured_from/3, httpsig_to/3, msg2/3, flat_from/3, flat_to/3 ]).
+-export([ json_to_erl/3, to_erl/1, to_str/1, structured_to/3, structured_from/3, httpsig_from/3, httpsig_to/3, msg2/3, flat_from/3, flat_to/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -include("include/hb.hrl").
 
@@ -201,6 +201,22 @@ structured_from(Msg1, _Msg2, _Opts) ->
     io:format("After structured field decode: ~p~n", [Data]),
     OBJ = dev_codec_structured:from(Data),
     io:format("OBJ: ~p~n", [OBJ]),    
+    Result = to_str(OBJ),
+    {ok, Result}.
+
+structured_to(Msg1, _Msg2, _Opts) ->
+    Data = to_erl(Msg1),
+    io:format("After structured field decode: ~p~n", [Data]),
+    OBJ = dev_codec_structured:to(Data),
+    io:format("OBJ: ~p~n", [OBJ]),    
+    Result = to_str(OBJ),
+    {ok, Result}.
+
+httpsig_from(Msg1, Msg2, Opts) ->
+    Data = to_erl(Msg1),
+    io:format("After structured field decode: ~p~n", [Data]),
+    OBJ = dev_codec_httpsig:from(Data),
+    io:format("httpsig:to: ~p~n", [OBJ]),
     Result = to_str(OBJ),
     {ok, Result}.
 
