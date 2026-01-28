@@ -40,7 +40,9 @@ from(Map, Req, Opts) when is_map(Map) ->
             #{},
             Map
         )
-    }.
+    };
+%% Handle other types (integers, floats, atoms, lists) by passing through
+from(Other, _, _Opts) -> {ok, Other}.
 
 %% Helper function to inject a value at a specific path in a nested map
 inject_at_path([Key], Value, Map) ->
@@ -72,7 +74,7 @@ inject_at_path([Key|Rest], Value, Map, Opts) ->
 %% @doc Convert a TABM to a flat map.
 to(Bin, _, _Opts) when is_binary(Bin) -> {ok, Bin};
 to(Map, Req, Opts) when is_map(Map) ->
-    Res = 
+    Res =
         maps:fold(
             fun(Key, Value, Acc) ->
                 case to(Value, Req, Opts) of
@@ -95,7 +97,9 @@ to(Map, Req, Opts) when is_map(Map) ->
             #{},
             Map
         ),
-    {ok, Res}.
+    {ok, Res};
+%% Handle other types (integers, floats, atoms, lists) by passing through
+to(Other, _, _Opts) -> {ok, Other}.
 
 serialize(Map) when is_map(Map) ->
     serialize(Map, #{}).
