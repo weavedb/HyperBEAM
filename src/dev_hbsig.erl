@@ -5,7 +5,7 @@
 
 to_erl(Msg) ->
     JSON = maps:get(<<"body">>, Msg),
-    Data = json:decode(JSON),
+    {ok, Data} = dev_codec_json:from(JSON, #{}, #{}),
     process_json_data(Data).
     
 %% Return both raw term and formatted string representation
@@ -196,51 +196,51 @@ is_safe_ascii(Bin) ->
     lists:all(fun(B) -> B >= 32 andalso B =< 126 end, binary_to_list(Bin)).
 
 
-structured_from(Msg1, _Msg2, _Opts) ->
+structured_from(Msg1, _Msg2, Opts) ->
     Data = to_erl(Msg1),
     io:format("After structured field decode: ~p~n", [Data]),
-    OBJ = dev_codec_structured:from(Data),
-    io:format("OBJ: ~p~n", [OBJ]),    
+    {ok, OBJ} = dev_codec_structured:from(Data, #{}, Opts),
+    io:format("OBJ: ~p~n", [OBJ]),
     Result = to_str(OBJ),
     {ok, Result}.
 
-structured_to(Msg1, _Msg2, _Opts) ->
+structured_to(Msg1, _Msg2, Opts) ->
     Data = to_erl(Msg1),
     io:format("After structured field decode: ~p~n", [Data]),
-    OBJ = dev_codec_structured:to(Data),
-    io:format("OBJ: ~p~n", [OBJ]),    
+    {ok, OBJ} = dev_codec_structured:to(Data, #{}, Opts),
+    io:format("OBJ: ~p~n", [OBJ]),
     Result = to_str(OBJ),
     {ok, Result}.
 
 httpsig_from(Msg1, Msg2, Opts) ->
     Data = to_erl(Msg1),
     io:format("After structured field decode: ~p~n", [Data]),
-    OBJ = dev_codec_httpsig:from(Data),
-    io:format("httpsig:to: ~p~n", [OBJ]),
+    {ok, OBJ} = dev_codec_httpsig:from(Data, Msg2, Opts),
+    io:format("httpsig:from: ~p~n", [OBJ]),
     Result = to_str(OBJ),
     {ok, Result}.
 
 httpsig_to(Msg1, Msg2, Opts) ->
     Data = to_erl(Msg1),
     io:format("After structured field decode: ~p~n", [Data]),
-    OBJ = dev_codec_httpsig:to(Data),
+    {ok, OBJ} = dev_codec_httpsig:to(Data, Msg2, Opts),
     io:format("httpsig:to: ~p~n", [OBJ]),
     Result = to_str(OBJ),
     {ok, Result}.
 
-flat_from(Msg1, _Msg2, _Opts) ->
+flat_from(Msg1, _Msg2, Opts) ->
     Data = to_erl(Msg1),
     io:format("After structured field decode: ~p~n", [Data]),
-    OBJ = dev_codec_flat:from(Data),
-    io:format("OBJ: ~p~n", [OBJ]),    
+    {ok, OBJ} = dev_codec_flat:from(Data, #{}, Opts),
+    io:format("OBJ: ~p~n", [OBJ]),
     Result = to_str(OBJ),
     {ok, Result}.
 
-flat_to(Msg1, _Msg2, _Opts) ->
+flat_to(Msg1, _Msg2, Opts) ->
     Data = to_erl(Msg1),
     io:format("After structured field decode: ~p~n", [Data]),
-    OBJ = dev_codec_flat:to(Data),
-    io:format("OBJ: ~p~n", [OBJ]),    
+    {ok, OBJ} = dev_codec_flat:to(Data, #{}, Opts),
+    io:format("OBJ: ~p~n", [OBJ]),
     Result = to_str(OBJ),
     {ok, Result}.
 
