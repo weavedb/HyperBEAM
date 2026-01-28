@@ -5,7 +5,7 @@
 
 to_erl(Msg) ->
     JSON = maps:get(<<"body">>, Msg),
-    Data = dev_codec_json:from(JSON),
+    Data = json:decode(JSON),
     process_json_data(Data).
     
 %% Return both raw term and formatted string representation
