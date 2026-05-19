@@ -1964,6 +1964,70 @@ function ao.send(msg)
       }, resolver)
     end
   end
+
+  -- Add receive() method for synchronous self-message handling
+  -- This enables Send({ Target = ao.id, ... }).receive() pattern
+  msg.receive = function(pattern)
+    local target = msg.Target or msg.target
+    -- Only handle self-messages synchronously
+    if target ~= ao.id then
+      -- For cross-process messages, return nil (async only)
+      return nil
+    end
+
+    -- Create a fake request message from the sent message
+    local fakeReq = {
+      body = {
+        action = msg.Action or msg.action,
+        Action = msg.Action or msg.action,
+        Data = msg.Data or msg.data,
+        From = ao.id,
+        ['from-process'] = ao.id,
+        reference = referenceString,
+        commitments = {}
+      },
+      slot = _G.ao.slot or 0,
+      ['block-timestamp'] = os.time and os.time() or 0
+    }
+    -- Copy all msg fields to fakeReq.body
+    for k, v in pairs(msg) do
+      if k ~= 'receive' and k ~= 'onReply' then
+        fakeReq.body[k] = v
+      end
+    end
+    -- Add reply function to fakeReq
+    local replyData = nil
+    fakeReq.reply = function(data)
+      replyData = data
+    end
+
+    -- Find and execute matching handler (skip _default and _eval)
+    for _, h in ipairs(Handlers.list) do
+      if h.name ~= "_default" and h.name ~= "_eval" then
+        local match = utils.matchesSpec(fakeReq, h.pattern)
+        if match and match ~= 0 and match ~= false and match ~= "skip" then
+          -- Execute the handler
+          local status, err = pcall(h.handle, fakeReq, _G.ao.env)
+          if not status then
+            return { Error = err }
+          end
+          -- If handler called reply(), return that data
+          if replyData then
+            return replyData
+          end
+          -- Otherwise check if handler added messages to outbox
+          local lastMsg = ao.outbox.Messages[#ao.outbox.Messages]
+          if lastMsg and lastMsg.reference ~= referenceString then
+            return lastMsg
+          end
+          break
+        end
+      end
+    end
+
+    return nil
+  end
+
   return msg
 end
 
