@@ -47,3 +47,5 @@ mkdocs-site-manifest.csv
 !test/admissible-report.json
 !test/config.json
 genesis-wasm-server
+native/dev_mul_nif/dev_mul.so
+native/dev_add_nif/target/
