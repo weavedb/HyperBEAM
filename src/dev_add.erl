@@ -4,10 +4,14 @@
 -include_lib("eunit/include/eunit.hrl").
 
 add(_M1, M2, _Opts) ->
-    A = maps:get(<<"a">>, M2),
-    B = maps:get(<<"b">>, M2),
+    A = to_int(maps:get(<<"a">>, M2)),
+    B = to_int(maps:get(<<"b">>, M2)),
     {ok, Sum} = dev_add_nif:add(A, B),
     {ok, #{ <<"sum">> => Sum }}.
+
+to_int(N) when is_integer(N) -> N;
+to_int(B) when is_binary(B) -> binary_to_integer(B);
+to_int(L) when is_list(L) -> list_to_integer(L).
 
 add_test() ->
     M1 = #{ <<"device">> => <<"add@1.0">> },
