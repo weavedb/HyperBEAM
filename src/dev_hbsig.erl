@@ -155,7 +155,7 @@ httpsig_to(Msg1, _Msg2, _Opts) ->
     Data = to_erl(Msg1),
     PreparedData = preprocess_unsupported_types(Data),
     ensure_atoms_from_ao_types(PreparedData),
-    {ok, OBJ} = dev_codec_httpsig:to(PreparedData, #{<<"bundle">> => true}, #{}),
+    {ok, OBJ} = dev_codec_httpsig:to(PreparedData, #{<<"bundle">> => false}, #{}),
     Result = to_str(OBJ),
     {ok, Result}.
 
@@ -323,7 +323,8 @@ flat_to(Msg1, _Msg2, _Opts) ->
     {ok, Result}.
 
 msg2(_Msg, Msg2, _Opts) ->
-    Msg3 = process_ao_types_empty_values(Msg2, Msg2),
+    Msg2WithoutPriv = maps:remove(<<"priv">>, Msg2),
+    Msg3 = process_ao_types_empty_values(Msg2WithoutPriv, Msg2WithoutPriv),
     Result = to_str(Msg3),
     {ok, Result}.
 
