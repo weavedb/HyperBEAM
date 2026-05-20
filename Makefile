@@ -114,6 +114,7 @@ setup-genesis-wasm: $(GENESIS_WASM_SERVER_DIR)
 	fi
 	@cd $(GENESIS_WASM_SERVER_DIR) && npm install > /dev/null 2>&1 && \
 		echo "Installed genesis-wasm@1.0 server."
+	@./native/genesis-wasm/patch-ao-loader.sh $(GENESIS_WASM_SERVER_DIR)
 
 # Update hyperbuddy-ui from remote bundle
 update-hyperbuddy-ui:
