@@ -59,6 +59,28 @@ serialize(Msg, _Req, Opts) ->
     {ok, dev_codec_httpsig_conv:encode_http_msg(HTTPSig, Opts) }.
 
 verify(Base, Req, RawOpts) ->
+    case do_verify(Base, Req, RawOpts) of
+        {ok, true} ->
+            {ok, true};
+        FirstResult ->
+            % If the first verify failed and the message has any committed
+            % keys stored as `<key>+link` => ID (a cache-linkification artifact
+            % of v0.9-FINAL), attempt to re-verify after inlining those values
+            % from the local cache. Original JS signatures were computed over
+            % the inline form; the cache may have linkified large values like
+            % `device-stack` arrays, breaking byte-exactness on recompute.
+            case try_inline_linkified_committed_keys(Base, Req, RawOpts) of
+                {true, InlinedBase} ->
+                    case (catch do_verify(InlinedBase, Req, RawOpts)) of
+                        {ok, true} -> {ok, true};
+                        _ -> FirstResult
+                    end;
+                _ ->
+                    FirstResult
+            end
+    end.
+
+do_verify(Base, Req, RawOpts) ->
     % A rsa-pss-sha512 commitment is verified by regenerating the signature
     % base and validating against the signature.
     Opts = opts(RawOpts),
@@ -267,7 +289,87 @@ maybe_bundle_tag_commitment(Commitment, Req, _Opts) ->
         false -> Commitment
     end.
 
-%% @doc Derive the set of keys to commit to from a `commit` request and a 
+%% @doc Inline any committed keys stored as `<key>+link` => ID using the local
+%% cache. Returns `{true, InlinedMsg}` if at least one key was inlined with a
+%% safely-encodable value, or `false` if nothing changed. Wrapped in try/catch:
+%% any failure during loading or safety-checking returns `false` and leaves
+%% the original message untouched.
+try_inline_linkified_committed_keys(Base, Req, RawOpts) when is_map(Base) ->
+    try
+        Opts = opts(RawOpts),
+        RawCommitted = maps:get(<<"committed">>, Req, []),
+        Committed = hb_util:message_to_ordered_list(RawCommitted, Opts),
+        do_try_inline(Base, Committed, Opts)
+    catch
+        _:_ -> false
+    end;
+try_inline_linkified_committed_keys(_Base, _Req, _Opts) -> false.
+
+do_try_inline(Msg, [], _Opts) ->
+    {false, Msg};
+do_try_inline(Msg, [Key | Rest], Opts) when is_binary(Key) ->
+    case maps:find(<<Key/binary, "+link">>, Msg) of
+        {ok, ID} when is_binary(ID), byte_size(ID) > 0 ->
+            case (catch hb_cache:read(ID, Opts)) of
+                {ok, Loaded} ->
+                    Encoded = encode_for_inline(Loaded),
+                    case is_safe_inline_value(Encoded) of
+                        true ->
+                            Msg1 =
+                                (maps:remove(<<Key/binary, "+link">>, Msg))#{
+                                    Key => Encoded
+                                },
+                            case do_try_inline(Msg1, Rest, Opts) of
+                                {_, Msg2} -> {true, Msg2};
+                                false -> {true, Msg1}
+                            end;
+                        false ->
+                            do_try_inline(Msg, Rest, Opts)
+                    end;
+                _ ->
+                    do_try_inline(Msg, Rest, Opts)
+            end;
+        _ ->
+            do_try_inline(Msg, Rest, Opts)
+    end;
+do_try_inline(Msg, [_ | Rest], Opts) ->
+    do_try_inline(Msg, Rest, Opts).
+
+%% @doc Convert an Erlang list (cache-native form of a numbered-list TABM) into
+%% a TABM map `#{<<"1">> => ..., <<"2">> => ..., <<"ao-types">> => ".=\"list\""}`
+%% suitable for the httpsig multipart encoder.
+encode_for_inline(List) when is_list(List) ->
+    {Map, _} =
+        lists:foldl(
+            fun(V, {Acc, I}) ->
+                IKey = integer_to_binary(I),
+                {Acc#{ IKey => encode_for_inline(V) }, I + 1}
+            end,
+            {#{}, 1},
+            List
+        ),
+    Map#{ <<"ao-types">> => <<".=\"list\"">> };
+encode_for_inline(Map) when is_map(Map) ->
+    maps:map(fun(_, V) -> encode_for_inline(V) end, Map);
+encode_for_inline(Bin) when is_binary(Bin) -> Bin;
+encode_for_inline(V) -> V.
+
+%% @doc Predicate: is this value encodable by the httpsig codec without atom
+%% values that would crash downstream `byte_size/1` calls in `group_maps/4`?
+is_safe_inline_value(Bin) when is_binary(Bin) -> true;
+is_safe_inline_value(Map) when is_map(Map) ->
+    maps:fold(
+        fun(K, V, Acc) ->
+            Acc andalso is_binary(K) andalso is_safe_inline_value(V)
+        end,
+        true,
+        Map
+    );
+is_safe_inline_value(List) when is_list(List) ->
+    lists:all(fun is_safe_inline_value/1, List);
+is_safe_inline_value(_) -> false.
+
+%% @doc Derive the set of keys to commit to from a `commit` request and a
 %% base message.
 keys_to_commit(_Base, #{ <<"committed">> := Explicit}, _Opts) ->
     % Case 1: Explicitly provided keys to commit.
