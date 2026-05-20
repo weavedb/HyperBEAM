@@ -8,8 +8,12 @@ cron(Msg1, Msg2, Opts) ->
         not_found -> hb_ao:get(<<"target">>, Msg2, not_found, Opts);
         T -> T
     end,
-    Wallet = hb_opts:get(priv_wallet, not_found, Opts),
-    Body = hb_message:commit( #{ <<"type">> => <<"Message">> }, Wallet ),
+    %% v0.9-FINAL: hb_message:commit(Msg, Opts) expects Opts to be a node-msg
+    %% map; the previous 2-arg form passing a wallet directly is deprecated
+    %% and now throws {deprecated_commit_call, ...}, which caused every cron
+    %% tick to error out (badmap: Wallet) and the worker to log-and-loop
+    %% without ever scheduling a message to the target process.
+    Body = hb_message:commit(#{<<"type">> => <<"Message">>}, Opts),
     SchedPid = dev_scheduler_registry:find(Target),
     %% Fire-and-forget: send schedule message directly to scheduler server
     %% and return immediately. The scheduler will process it asynchronously.
