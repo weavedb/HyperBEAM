@@ -4,7 +4,8 @@
 -include("include/hb.hrl").
  
 compute(Msg1, Msg2, Opts) ->
-  Num = maps:get(<<"num">>, Msg1) + 1,
+  %% v0.9-FINAL: see dev_inc:compute for the link-resolution rationale.
+  Num = hb_ao:get(<<"num">>, Msg1, 0, Opts) + 1,
   {ok, hb_ao:set( 
     Msg1,
     #{ 

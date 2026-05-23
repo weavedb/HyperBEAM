@@ -4,7 +4,10 @@
 -include("include/hb.hrl").
 
 compute(Msg1, Msg2, Opts) ->
-  Num = maps:get(<<"num">>, Msg1),
+  %% v0.9-FINAL: values pulled from a cached message may come back as
+  %% {link, ID, _} tuples instead of inline integers. Use hb_ao:get/3,
+  %% which resolves the link via the local store, instead of maps:get/2.
+  Num = hb_ao:get(<<"num">>, Msg1, 0, Opts),
   {ok, hb_ao:set( Msg1, #{ <<"num">> => Num + 1 }, Opts )}.
 
 init(Msg, Msg2, Opts) -> 
