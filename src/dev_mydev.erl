@@ -10,67 +10,78 @@
 info(Msg1, Msg2_, Opts) ->
     {ok, #{ <<"version">> => <<"1.0">> }}.
 
+%% v0.9-FINAL: codec to/from are now 3-arity and return {ok, Result}.
+%% Wrap into a helper for readability.
+-define(JFROM(B, O), (begin {ok, __M} = dev_codec_json:from(B, #{}, O), __M end)).
+-define(JTO(M, O), (begin {ok, __J} = dev_codec_json:to(M, #{}, O), __J end)).
+-define(FTO(M, O), (begin {ok, __F} = dev_codec_flat:to(M, #{}, O), __F end)).
+-define(FFROM(M, O), (begin {ok, __F} = dev_codec_flat:from(M, #{}, O), __F end)).
+-define(STO(M, O), (begin {ok, __T} = dev_codec_structured:to(M, #{}, O), __T end)).
+-define(SFROM(M, O), (begin {ok, __T} = dev_codec_structured:from(M, #{}, O), __T end)).
+-define(HTO(M, O), (begin {ok, __H} = dev_codec_httpsig:to(M, #{}, O), __H end)).
+-define(HFROM(M, O), (begin {ok, __H} = dev_codec_httpsig:from(M, #{}, O), __H end)).
+
 info_json(Msg1, Msg2_, Opts) ->
-    JSON = dev_codec_json:to(#{ <<"version">> => <<"1.0">> }),
+    JSON = ?JTO(#{ <<"version">> => <<"1.0">> }, Opts),
     {ok, JSON}.
 
 hello(Msg1, Msg2_, Opts) ->
     Body = maps:get(<<"body">>, Msg1),
-    OBJ = dev_codec_json:from(Body),
+    OBJ = ?JFROM(Body, Opts),
     Name = maps:get(<<"name">>, OBJ),
     Hello = <<<<"Hello, ">>/binary, Name/binary, <<"!">>/binary>>,
-    JSON = dev_codec_json:to(#{ <<"hello">> => Hello }),
+    JSON = ?JTO(#{ <<"hello">> => Hello }, Opts),
     {ok, JSON}.
 
 forward(Msg1, Msg2, Opts) ->
   io:format("Msg1: ~p~n~nMsg2: ~p~n~nOpts: ~p~n", [Msg1, Msg2, Opts]),
-  JSON = dev_codec_json:to(#{
+  JSON = ?JTO(#{
     <<"msg1">> => Msg1,
     <<"msg2">> => Msg2,
     <<"opts">> => hb_private:reset(Opts)
-  }),
+  }, Opts),
   {ok, JSON}.
 
 flat_to(Msg1, Msg2, Opts) ->
     Body = maps:get(<<"body">>, Msg1),
-    OBJ = dev_codec_json:from(Body),
-    FLAT = dev_codec_flat:to(OBJ),
-    JSON = dev_codec_json:to(FLAT),
+    OBJ = ?JFROM(Body, Opts),
+    FLAT = ?FTO(OBJ, Opts),
+    JSON = ?JTO(FLAT, Opts),
     {ok, JSON}.
 
 flat_from(Msg1, Msg2, Opts) ->
     Body = maps:get(<<"body">>, Msg1),
-    OBJ = dev_codec_json:from(Body),
-    FLAT = dev_codec_flat:from(OBJ),
-    JSON = dev_codec_json:to(FLAT),
+    OBJ = ?JFROM(Body, Opts),
+    FLAT = ?FFROM(OBJ, Opts),
+    JSON = ?JTO(FLAT, Opts),
     {ok, JSON}.
 
 structured_to(Msg1, Msg2, Opts) ->
     Body = maps:get(<<"body">>, Msg1),
-    OBJ = dev_codec_json:from(Body),
-    TABM = dev_codec_structured:to(OBJ),
-    JSON = dev_codec_json:to(TABM),
+    OBJ = ?JFROM(Body, Opts),
+    TABM = ?STO(OBJ, Opts),
+    JSON = ?JTO(TABM, Opts),
     {ok, JSON}.
- 
+
 structured_from(Msg1, Msg2, Opts) ->
     Body = maps:get(<<"body">>, Msg1),
-    TABM = dev_codec_json:from(Body),
-    OBJ = dev_codec_structured:from(TABM),
-    JSON = dev_codec_json:to(OBJ),
+    TABM = ?JFROM(Body, Opts),
+    OBJ = ?SFROM(TABM, Opts),
+    JSON = ?JTO(OBJ, Opts),
     {ok, JSON}.
 
 httpsig_to(Msg1, Msg2, Opts) ->
     Body = maps:get(<<"body">>, Msg1),
-    TABM = dev_codec_json:from(Body),
-    HTTPSIG = dev_codec_httpsig:to(TABM),
-    JSON = dev_codec_json:to(HTTPSIG),
+    TABM = ?JFROM(Body, Opts),
+    HTTPSIG = ?HTO(TABM, Opts),
+    JSON = ?JTO(HTTPSIG, Opts),
     {ok, JSON}.
- 
+
 httpsig_from(Msg1, Msg2, Opts) ->
     Body = maps:get(<<"body">>, Msg1),
-    HTTPSIG = dev_codec_json:from(Body),
-    TABM = dev_codec_httpsig:from(HTTPSIG),
-    JSON = dev_codec_json:to(TABM),
+    HTTPSIG = ?JFROM(Body, Opts),
+    TABM = ?HFROM(HTTPSIG, Opts),
+    JSON = ?JTO(TABM, Opts),
     {ok, JSON}.
 
 add(Msg1, Msg2, Opts)->
